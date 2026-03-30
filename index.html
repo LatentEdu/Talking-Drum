@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Dùndún</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Space+Mono:wght@400;700&display=swap');
+  :root {
+    --skin: #c4935a; --wood: #5c3d1e; --rope: #d4b483;
+    --deep: #1a1008; --strike: #e8c87a; --bass: #8b4513;
+    --do: #e8c87a; --re: #c4935a; --mi: #8b6914;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--deep); font-family: 'Space Mono', monospace; touch-action: none; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E"); pointer-events: none; z-index: 100; opacity: 0.4; }
+  #app { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 48px 24px 40px; position: relative; }
+  header { text-align: center; z-index: 10; }
+  h1 { font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic; font-size: 2.2rem; color: var(--rope); letter-spacing: 0.08em; line-height: 1; }
+  h1 span { font-style: normal; font-size: 0.55rem; letter-spacing: 0.3em; color: var(--skin); display: block; margin-top: 6px; text-transform: uppercase; }
+  #instrument { flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+  #tom-container { width: 100%; max-width: 340px; position: relative; }
+  #tom-label, #bass-label { font-size: 0.6rem; letter-spacing: 0.25em; color: var(--rope); text-transform: uppercase; margin-bottom: 10px; text-align: center; }
+  #tom-pad { width: 100%; height: 220px; border-radius: 20px; background: radial-gradient(ellipse at 50% 40%, #2e1f0a 0%, #140d04 100%); border: 1.5px solid #3d2810; position: relative; overflow: hidden; cursor: pointer; }
+  #tom-pad::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 18px, rgba(196,147,90,0.04) 18px, rgba(196,147,90,0.04) 19px); border-radius: 20px; }
+  .pitch-band { position: absolute; left: 0; right: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 16px; pointer-events: none; }
+  .pitch-band.do { top: 0; height: 33.3%; background: linear-gradient(180deg, rgba(232,200,122,0.06) 0%, transparent 100%); }
+  .pitch-band.re { top: 33.3%; height: 33.3%; }
+  .pitch-band.mi { top: 66.6%; height: 33.4%; background: linear-gradient(0deg, rgba(139,105,20,0.06) 0%, transparent 100%); }
+  .pitch-band span { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.95rem; color: rgba(196,147,90,0.3); }
+  #slider-thumb { position: absolute; left: 16px; width: 4px; border-radius: 2px; background: linear-gradient(180deg, var(--rope) 0%, var(--skin) 100%); box-shadow: 0 0 12px rgba(212,180,131,0.4); pointer-events: none; top: 0; height: 100%; }
+  #slider-indicator { position: absolute; left: 8px; width: 20px; height: 20px; border-radius: 50%; background: var(--rope); box-shadow: 0 0 16px rgba(212,180,131,0.6); pointer-events: none; transform: translateY(-50%); top: 50%; transition: background 0.1s, box-shadow 0.1s; }
+  .ripple { position: absolute; border-radius: 50%; border: 1.5px solid var(--strike); pointer-events: none; animation: ripple-out 0.5s ease-out forwards; transform: translate(-50%, -50%); }
+  @keyframes ripple-out { 0% { width: 20px; height: 20px; opacity: 0.8; } 100% { width: 180px; height: 180px; opacity: 0; } }
+  #pitch-display { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 3.5rem; font-weight: 300; color: rgba(212,180,131,0.15); pointer-events: none; transition: color 0.15s; }
+  #pitch-display.active { color: rgba(212,180,131,0.6); }
+  #bass-container { width: 100%; max-width: 340px; }
+  #bass-pad { width: 100%; height: 110px; border-radius: 20px; background: radial-gradient(ellipse at 50% 60%, #2a1208 0%, #0e0804 100%); border: 1.5px solid #3d1a08; position: relative; overflow: hidden; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  #bass-pad::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 14px, rgba(139,69,19,0.05) 14px, rgba(139,69,19,0.05) 15px); }
+  #bass-inner { width: 60px; height: 60px; border-radius: 50%; border: 1.5px solid rgba(139,69,19,0.4); position: relative; }
+  #bass-inner::before { content: ''; position: absolute; inset: 8px; border-radius: 50%; border: 1px solid rgba(139,69,19,0.25); }
+  #bass-pad.hitting { background: radial-gradient(ellipse at 50% 60%, #3d1a08 0%, #0e0804 100%); }
+  #pitch-meter { position: absolute; left: 28px; top: 0; bottom: 0; width: 3px; background: rgba(255,255,255,0.04); border-radius: 2px; pointer-events: none; }
+  #pitch-fill { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 2px; background: linear-gradient(0deg, var(--mi), var(--re), var(--do)); transition: height 0.05s; height: 50%; }
+  #tom-pad.active { border-color: rgba(212,180,131,0.3); }
+  #status { font-size: 0.5rem; letter-spacing: 0.2em; color: rgba(196,147,90,0.25); text-transform: uppercase; text-align: center; padding-bottom: 4px; }
+  #unlock-screen { position: fixed; inset: 0; background: var(--deep); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; cursor: pointer; }
+  #unlock-screen h2 { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 300; font-size: 2rem; color: var(--rope); letter-spacing: 0.06em; }
+  #unlock-screen p { font-size: 0.55rem; letter-spacing: 0.3em; color: rgba(196,147,90,0.4); text-transform: uppercase; }
+  #unlock-btn { margin-top: 12px; padding: 16px 40px; border: 1px solid rgba(212,180,131,0.3); border-radius: 100px; background: transparent; color: var(--rope); font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer; }
+  #visualizer { width: 100%; max-width: 340px; height: 28px; display: flex; align-items: center; gap: 2px; justify-content: center; }
+  .vis-bar { width: 2px; border-radius: 1px; background: var(--rope); opacity: 0.15; transition: height 0.08s, opacity 0.08s; height: 4px; }
+</style>
+</head>
+<body>
+<div id="unlock-screen">
+  <h2>Dùndún</h2>
+  <p>Yoruba Talking Drum</p>
+  <button id="unlock-btn">Tap to Begin</button>
+</div>
+<div id="app">
+  <header><h1>Dùndún<span>Yoruba Talking Drum</span></h1></header>
+  <div id="instrument">
+    <div id="tom-container">
+      <div id="tom-label">Tom — Pitch Voice</div>
+      <div id="tom-pad">
+        <div class="pitch-band do"><span>dó</span></div>
+        <div class="pitch-band re"><span>ré</span></div>
+        <div class="pitch-band mi"><span>mì</span></div>
+        <div id="pitch-meter"><div id="pitch-fill"></div></div>
+        <div id="slider-thumb"></div>
+        <div id="slider-indicator"></div>
+        <div id="pitch-display">ré</div>
+      </div>
+    </div>
+    <div id="visualizer"></div>
+    <div id="bass-container">
+      <div id="bass-label">Bass Tom — Jab / Body</div>
+      <div id="bass-pad"><div id="bass-inner"></div></div>
+    </div>
+  </div>
+  <div id="status">hold left edge · strike right side · bass below</div>
+</div>
+<script>
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+const unlockScreen = document.getElementById('unlock-screen');
+const unlockBtn = document.getElementById('unlock-btn');
+unlockBtn.addEventListener('click', () => {
+  ctx.resume().then(() => {
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+    unlockScreen.style.display = 'none';
+  });
+});
+const vis = document.getElementById('visualizer');
+const BAR_COUNT = 32;
+const bars = [];
+for (let i = 0; i < BAR_COUNT; i++) {
+  const b = document.createElement('div');
+  b.className = 'vis-bar';
+  vis.appendChild(b);
+  bars.push(b);
+}
+const analyser = ctx.createAnalyser();
+analyser.fftSize = 64;
+const masterGain = ctx.createGain();
+masterGain.gain.value = 1.0;
+analyser.connect(masterGain);
+masterGain.connect(ctx.destination);
+const visData = new Uint8Array(analyser.frequencyBinCount);
+function animateVis() {
+  requestAnimationFrame(animateVis);
+  analyser.getByteFrequencyData(visData);
+  const step = Math.floor(visData.length / BAR_COUNT);
+  for (let i = 0; i < BAR_COUNT; i++) {
+    const val = visData[i * step] / 255;
+    bars[i].style.height = (4 + val * 24) + 'px';
+    bars[i].style.opacity = 0.12 + val * 0.6;
+  }
+}
+animateVis();
+function freqFromT(t) { return 420 + (200 - 420) * t; }
+function pitchNameFromT(t) { return t < 0.33 ? 'dó' : t < 0.66 ? 'ré' : 'mì'; }
+function playTom(freq, x, y) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = freq;
+  filter.Q.value = 3.5;
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq * 1.8, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(freq, ctx.currentTime + 0.06);
+  gain.gain.setValueAtTime(0.0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.85, ctx.currentTime + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+  osc.connect(filter); filter.connect(gain); gain.connect(analyser);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.6);
+  spawnRipple(tomPad, x, y, 'var(--strike)');
+}
+function playBass() {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass'; filter.frequency.value = 140; filter.Q.value = 1.2;
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(95, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + 0.12);
+  gain.gain.setValueAtTime(0.0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(1.0, ctx.currentTime + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+  osc.connect(filter); filter.connect(gain); gain.connect(analyser);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.75);
+}
+function spawnRipple(pad, x, y, color) {
+  const r = document.createElement('div');
+  r.className = 'ripple'; r.style.left = x + 'px'; r.style.top = y + 'px'; r.style.borderColor = color;
+  pad.appendChild(r); setTimeout(() => r.remove(), 500);
+}
+const tomPad = document.getElementById('tom-pad');
+const sliderIndicator = document.getElementById('slider-indicator');
+const pitchDisplay = document.getElementById('pitch-display');
+const pitchFill = document.getElementById('pitch-fill');
+let sliderT = 0.5, sliderActive = false, sliderPointerId = null;
+function updateSliderUI(t) {
+  sliderT = Math.max(0, Math.min(1, t));
+  sliderIndicator.style.top = (sliderT * tomPad.clientHeight) + 'px';
+  pitchFill.style.height = (100 - sliderT * 100) + '%';
+  pitchDisplay.textContent = pitchNameFromT(sliderT);
+  if (sliderT < 0.33) { sliderIndicator.style.background = 'var(--do)'; sliderIndicator.style.boxShadow = '0 0 16px rgba(232,200,122,0.7)'; }
+  else if (sliderT < 0.66) { sliderIndicator.style.background = 'var(--re)'; sliderIndicator.style.boxShadow = '0 0 16px rgba(196,147,90,0.7)'; }
+  else { sliderIndicator.style.background = 'var(--mi)'; sliderIndicator.style.boxShadow = '0 0 16px rgba(139,105,20,0.7)'; }
+}
+const SLIDER_ZONE = 44;
+tomPad.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); tomPad.setPointerCapture(e.pointerId);
+  const rect = tomPad.getBoundingClientRect();
+  const localX = e.clientX - rect.left, localY = e.clientY - rect.top;
+  if (localX < SLIDER_ZONE) {
+    sliderActive = true; sliderPointerId = e.pointerId;
+    updateSliderUI(localY / rect.height);
+    pitchDisplay.classList.add('active');
+  } else {
+    playTom(freqFromT(sliderT), localX, localY);
+    tomPad.classList.add('active');
+    setTimeout(() => tomPad.classList.remove('active'), 120);
+  }
+});
+tomPad.addEventListener('pointermove', (e) => {
+  if (sliderActive && e.pointerId === sliderPointerId) {
+    const rect = tomPad.getBoundingClientRect();
+    updateSliderUI((e.clientY - rect.top) / rect.height);
+  }
+});
+tomPad.addEventListener('pointerup', (e) => {
+  if (e.pointerId === sliderPointerId) { sliderActive = false; sliderPointerId = null; pitchDisplay.classList.remove('active'); }
+});
+tomPad.addEventListener('pointercancel', (e) => {
+  if (e.pointerId === sliderPointerId) { sliderActive = false; sliderPointerId = null; }
+});
+const bassPad = document.getElementById('bass-pad');
+bassPad.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); playBass();
+  bassPad.classList.add('hitting');
+  const rect = bassPad.getBoundingClientRect();
+  spawnRipple(bassPad, e.clientX - rect.left, e.clientY - rect.top, 'var(--bass)');
+  setTimeout(() => bassPad.classList.remove('hitting'), 100);
+});
+updateSliderUI(0.5);
+</script>
+</body>
+</html>
