@@ -83,9 +83,9 @@
   #pitch-name-display { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:1.1rem; color:rgba(212,180,131,0.55); line-height:1; min-width:20px; text-align:center; margin-bottom:2px; }
   #pitch-col { display:flex; flex-direction:column; align-items:center; gap:4px; }
   #pitch-top-label,#pitch-bottom-label { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:0.62rem; color:rgba(212,180,131,0.28); }
-  #slider-track { width:8px; height:120px; border-radius:4px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); position:relative; cursor:pointer; touch-action:none; }
+  #slider-track { width:8px; height:160px; border-radius:4px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); position:relative; cursor:pointer; touch-action:none; }
   #slider-fill { position:absolute; bottom:0; left:0; right:0; border-radius:4px; background:linear-gradient(0deg,var(--mi),var(--re),var(--do)); pointer-events:none; }
-  #slider-thumb { position:absolute; left:50%; transform:translate(-50%,-50%); width:26px; height:26px; border-radius:50%; background:var(--rope); box-shadow:0 0 12px rgba(212,180,131,0.6); top:50%; touch-action:none; transition:background 0.08s; }
+  #slider-thumb { position:absolute; left:50%; transform:translate(-50%,-50%); width:28px; height:28px; border-radius:50%; background:var(--rope); box-shadow:0 0 12px rgba(212,180,131,0.6); top:50%; touch-action:none; transition:background 0.08s; }
   #pitch-label { font-size:0.32rem; letter-spacing:0.2em; color:rgba(212,180,131,0.15); text-transform:uppercase; }
 
   /* SETTINGS PANEL */
@@ -137,19 +137,19 @@
       </div>
     </div>
     <div class="drum-col">
-      <div class="drum-label">Smoosh</div>
-      <div class="tom mid" id="smoosh-tom">
-        <div class="tom-shell"></div><div class="tom-rim"></div>
-        <div class="tom-head"></div>
-        <div class="tom-lugs" id="smoosh-lugs"></div>
-      </div>
-    </div>
-    <div class="drum-col">
       <div class="drum-label">Pitch Voice</div>
       <div class="tom big" id="pitch-tom">
         <div class="tom-shell"></div><div class="tom-rim"></div>
         <div class="tom-head"></div>
         <div class="tom-lugs" id="pitch-lugs"></div>
+      </div>
+    </div>
+    <div class="drum-col">
+      <div class="drum-label">Smoosh</div>
+      <div class="tom mid" id="smoosh-tom">
+        <div class="tom-shell"></div><div class="tom-rim"></div>
+        <div class="tom-head"></div>
+        <div class="tom-lugs" id="smoosh-lugs"></div>
       </div>
     </div>
   </div>
@@ -363,50 +363,67 @@ bindTom('jab-tom', 'jab', false);
 bindTom('smoosh-tom', 'smoosh', false);
 bindTom('pitch-tom', null, true);
 
-// ── PITCH SLIDER ──
+// ── PITCH SLIDER (vertical, crossfade) ──
 var sliderTrack = document.getElementById('slider-track');
 var sliderThumb = document.getElementById('slider-thumb');
 var sliderFill  = document.getElementById('slider-fill');
 var pitchDisplay = document.getElementById('pitch-name-display');
 var sliderPid = null;
 
+function getCrossfadeGains(t) {
+  var g = { 'do': 0, 're': 0, 'mi': 0 };
+  if (t <= 0.5) {
+    var blend = t / 0.5;
+    g['do'] = 1 - blend;
+    g['re'] = blend;
+  } else {
+    var blend = (t - 0.5) / 0.5;
+    g['re'] = 1 - blend;
+    g['mi'] = blend;
+  }
+  return g;
+}
+
+function getPitchName(t) {
+  if (t < 0.25) return 'dó';
+  if (t < 0.75) return 'ré';
+  return 'mì';
+}
+
 function setSlider(t) {
   sliderT = Math.max(0, Math.min(1, t));
-  sliderThumb.style.left = (sliderT*100) + '%';
-  sliderFill.style.width = (sliderT*100) + '%';
-  if (sliderT < 0.33) {
-    pitchDisplay.textContent = 'dó';
+  sliderThumb.style.top = (sliderT * 100) + '%';
+  sliderFill.style.height = ((1 - sliderT) * 100) + '%';
+  pitchDisplay.textContent = getPitchName(sliderT);
+  if (sliderT < 0.25) {
     sliderThumb.style.background = 'var(--do)';
     pitchDisplay.style.color = 'rgba(232,200,122,0.7)';
-  } else if (sliderT < 0.66) {
-    pitchDisplay.textContent = 'ré';
+  } else if (sliderT < 0.75) {
     sliderThumb.style.background = 'var(--re)';
     pitchDisplay.style.color = 'rgba(196,147,90,0.7)';
   } else {
-    pitchDisplay.textContent = 'mì';
     sliderThumb.style.background = 'var(--mi)';
     pitchDisplay.style.color = 'rgba(139,105,20,0.65)';
   }
 }
 
-function bindHSlider(track, onMove) {
-  var pid = null;
-  track.addEventListener('pointerdown', function(e) {
-    e.stopPropagation(); e.preventDefault();
-    track.setPointerCapture(e.pointerId); pid = e.pointerId;
-    var rect = track.getBoundingClientRect();
-    onMove((e.clientX - rect.left) / rect.width);
-  });
-  track.addEventListener('pointermove', function(e) {
-    if (e.pointerId !== pid) return;
-    var rect = track.getBoundingClientRect();
-    onMove((e.clientX - rect.left) / rect.width);
-  });
-  track.addEventListener('pointerup', function(e) { if (e.pointerId===pid) pid=null; });
-  track.addEventListener('pointercancel', function(e) { if (e.pointerId===pid) pid=null; });
-}
-
-bindHSlider(sliderTrack, setSlider);
+sliderTrack.addEventListener('touchstart', function(e) {
+  e.stopPropagation(); e.preventDefault();
+  sliderPid = e.changedTouches[0].identifier;
+  var rect = sliderTrack.getBoundingClientRect();
+  setSlider((e.changedTouches[0].clientY - rect.top) / rect.height);
+}, { passive: false });
+sliderTrack.addEventListener('touchmove', function(e) {
+  e.stopPropagation(); e.preventDefault();
+  var rect = sliderTrack.getBoundingClientRect();
+  for (var i = 0; i < e.changedTouches.length; i++) {
+    if (e.changedTouches[i].identifier === sliderPid) {
+      setSlider((e.changedTouches[i].clientY - rect.top) / rect.height);
+    }
+  }
+}, { passive: false });
+sliderTrack.addEventListener('touchend', function(e) { sliderPid = null; });
+sliderTrack.addEventListener('touchcancel', function(e) { sliderPid = null; });
 setSlider(0.5);
 
 // ── VOLUME ──
