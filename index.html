@@ -78,13 +78,14 @@
   #vol-thumb { position:absolute; top:50%; transform:translate(-50%,-50%); width:18px; height:18px; border-radius:50%; background:var(--rope); box-shadow:0 0 8px rgba(212,180,131,0.5); left:80%; touch-action:none; transition:none; }
 
   /* pitch slider */
-  #pitch-section { display:flex; flex-direction:column; align-items:center; gap:4px; }
-  #pitch-name-display { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:0.95rem; color:rgba(212,180,131,0.55); line-height:1; text-align:center; min-width:20px; }
-  #pitch-row { display:flex; flex-direction:row; align-items:center; gap:6px; }
-  #pitch-left-label,#pitch-right-label { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:0.65rem; color:rgba(212,180,131,0.3); }
-  #slider-track { width:140px; height:8px; border-radius:4px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); position:relative; cursor:pointer; touch-action:none; }
-  #slider-fill { position:absolute; left:0; top:0; bottom:0; border-radius:4px; background:linear-gradient(90deg,var(--do),var(--re),var(--mi)); pointer-events:none; }
-  #slider-thumb { position:absolute; top:50%; transform:translate(-50%,-50%); width:24px; height:24px; border-radius:50%; background:var(--rope); box-shadow:0 0 12px rgba(212,180,131,0.6); left:50%; touch-action:none; transition:background 0.08s; }
+  /* vertical pitch slider fixed bottom left */
+  #pitch-section { position:fixed; bottom:18px; left:20px; display:flex; flex-direction:row; align-items:flex-end; gap:8px; z-index:50; }
+  #pitch-name-display { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:1.1rem; color:rgba(212,180,131,0.55); line-height:1; min-width:20px; text-align:center; margin-bottom:2px; }
+  #pitch-col { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  #pitch-top-label,#pitch-bottom-label { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:0.62rem; color:rgba(212,180,131,0.28); }
+  #slider-track { width:8px; height:120px; border-radius:4px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); position:relative; cursor:pointer; touch-action:none; }
+  #slider-fill { position:absolute; bottom:0; left:0; right:0; border-radius:4px; background:linear-gradient(0deg,var(--mi),var(--re),var(--do)); pointer-events:none; }
+  #slider-thumb { position:absolute; left:50%; transform:translate(-50%,-50%); width:26px; height:26px; border-radius:50%; background:var(--rope); box-shadow:0 0 12px rgba(212,180,131,0.6); top:50%; touch-action:none; transition:background 0.08s; }
   #pitch-label { font-size:0.32rem; letter-spacing:0.2em; color:rgba(212,180,131,0.15); text-transform:uppercase; }
 
   /* SETTINGS PANEL */
@@ -155,16 +156,16 @@
 
   <div id="bottom-bar">
     <div id="pitch-section">
-      <div id="pitch-name-display">ré</div>
-      <div id="pitch-row">
-        <span id="pitch-left-label">dó</span>
+      <div id="pitch-col">
+        <span id="pitch-top-label">dó</span>
         <div id="slider-track">
           <div id="slider-fill"></div>
           <div id="slider-thumb"></div>
         </div>
-        <span id="pitch-right-label">mì</span>
+        <span id="pitch-bottom-label">mì</span>
+        <div id="pitch-label">pitch</div>
       </div>
-      <div id="pitch-label">pitch</div>
+      <div id="pitch-name-display">ré</div>
     </div>
     <div style="flex:1"></div>
   </div>
@@ -329,12 +330,30 @@ function spawnRipple(pad, e) {
 }
 
 // ── DRUM PADS ──
-function bindTom(id, key, isVariable) {
+function playPitchCrossfade() {
+  if (!ctx) return;
+  var gains = getCrossfadeGains(sliderT);
+  ['do','re','mi'].forEach(function(k) {
+    if (gains[k] < 0.01 || !buffers[k]) return;
+    var src = ctx.createBufferSource();
+    var g = ctx.createGain();
+    src.buffer = buffers[k];
+    g.gain.value = gains[k];
+    src.connect(g);
+    g.connect(bassFilter);
+    src.start(ctx.currentTime);
+  });
+}
+
+function bindTom(id, key, isPitch) {
   var tom = document.getElementById(id);
   tom.addEventListener('pointerdown', function(e) {
     e.preventDefault();
-    var k = isVariable ? getSoundKey() : key;
-    playBuf(k);
+    if (isPitch) {
+      playPitchCrossfade();
+    } else {
+      playBuf(key);
+    }
     spawnRipple(tom, e);
     tom.classList.add('hit');
     setTimeout(function(){ tom.classList.remove('hit'); }, 80);
@@ -343,8 +362,6 @@ function bindTom(id, key, isVariable) {
 bindTom('jab-tom', 'jab', false);
 bindTom('smoosh-tom', 'smoosh', false);
 bindTom('pitch-tom', null, true);
-
-function getSoundKey() { return sliderT < 0.33 ? 'do' : sliderT < 0.66 ? 're' : 'mi'; }
 
 // ── PITCH SLIDER ──
 var sliderTrack = document.getElementById('slider-track');
